@@ -10,12 +10,12 @@ import (
 	"time"
 
 	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/peerstore"
-	noise "github.com/libp2p/go-libp2p-noise"
-	yamux "github.com/libp2p/go-libp2p-yamux"
+	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/peerstore"
+	yamux "github.com/libp2p/go-libp2p/p2p/muxer/yamux"
+	noise "github.com/libp2p/go-libp2p/p2p/security/noise"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
@@ -33,10 +33,20 @@ func main() {
 		"noise",
 		"Mechanism to secure transport, either 'noise' or 'plaintext'.",
 	)
+	transport := flag.String(
+		"transport",
+		"tcp",
+		"Mechanism to secure transport, either 'tcp' or 'quic'.",
+	)
+
 	flag.Parse()
 
 	if *listenAddr == "" {
-		*listenAddr = "/ip4/127.0.0.1/tcp/0"
+		if *transport == "quic" {
+			*listenAddr = "/ip4/127.0.0.1/udp/0/quic"
+		} else {
+			*listenAddr = "/ip4/127.0.0.1/tcp/0"
+		}
 	}
 
 	var priv crypto.PrivKey
@@ -69,7 +79,7 @@ func main() {
 		opts = append(opts, libp2p.NoSecurity)
 	}
 
-	basicHost, err := libp2p.New(context.Background(), opts...)
+	basicHost, err := libp2p.New(opts...)
 	if err != nil {
 		panic(err)
 	}
@@ -104,7 +114,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	peerid, err := peer.IDB58Decode(pid)
+	peerid, err := peer.Decode(pid)
 	if err != nil {
 		log.Fatalln(err)
 	}
